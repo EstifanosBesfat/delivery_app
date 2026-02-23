@@ -29,4 +29,29 @@ class ApiService {
       return [];
     }
   }
+
+  static Future<Map<String, dynamic>> createOrder(int restaurantId, double total) async {
+    final url = Uri.parse('$baseUrl/orders');
+    
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'restaurantId': restaurantId,
+          'total': total, // We will just fake a price for now
+        }),
+      );
+
+      final json = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        return {'success': true, 'data': json};
+      } else {
+        return {'success': false, 'message': json['error'] ?? 'Order Failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Connection Error: $e'};
+    }
+  }
 }

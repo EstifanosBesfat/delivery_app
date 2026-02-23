@@ -72,6 +72,88 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
+  // Function to show the "Menu"
+  void _showRestaurantMenu(dynamic restaurant) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          height: 250,
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                restaurant['name'], 
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)
+              ),
+              const SizedBox(height: 10),
+              Text("Distance: ${restaurant['distance'].toStringAsFixed(0)}m away"),
+              const Divider(),
+              const Text("🍔 Burger Combo - \$25.50", style: TextStyle(fontSize: 18)),
+              const Spacer(),
+              
+              // THE ORDER BUTTON
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  onPressed: () => _placeOrder(restaurant['id']),
+                  child: const Text("ORDER NOW (\$25.50)", style: TextStyle(fontSize: 18)),
+                ),
+              )
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Logic to call API
+  void _placeOrder(int restaurantId) async {
+    // Close the sheet first
+    Navigator.pop(context);
+
+    // Show loading snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Finding a driver... 🚕"), duration: Duration(seconds: 1)),
+    );
+
+    // Call Backend
+    final result = await ApiService.createOrder(restaurantId, 25.50);
+
+    if (result['success']) {
+      final data = result['data'];
+      // Show Success Dialog
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Order Confirmed! ✅"),
+          content: Text("Order #${data['orderId']}\n\nDriver ${data['driver']} has been assigned!"),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))
+          ],
+        ),
+      );
+    } else {
+      // Show Error (e.g., "No drivers available")
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Order Failed ❌"),
+          content: Text(result['message']),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Close"))
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,10 +184,15 @@ class _MapScreenState extends State<MapScreen> {
                     (r['latitude'] as num).toDouble(),
                     (r['longitude'] as num).toDouble(),
                   ),
-                  child: const Icon(
-                    Icons.restaurant,
-                    color: Colors.orange,
-                    size: 30,
+                  width: 40,
+                  height: 40,
+                  child: GestureDetector(
+                    onTap: () => _showRestaurantMenu(r),
+                    child: const Icon(
+                      Icons.restaurant,
+                      color: Colors.orange,
+                      size: 30,
+                    ),
                   ),
                 );
               }).toList(),
