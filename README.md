@@ -2,7 +2,7 @@
 
 The mobile client for the **Geospatial Delivery System**. Built with **Flutter**, this app visualizes real-time socket events, renders interactive maps using OpenStreetMap, and manages the ordering lifecycle via a custom Node.js backend.
 
-🔗 **Backend Repository:** [https://github.com/EstifanosBesfat/delivery_app] (Node.js, PostGIS, Redis, Docker)
+🔗 **Backend Repository:** [https://github.com/EstifanosBesfat/delivery-api] (Node.js, PostGIS, Redis, Docker)
 
 ---
 
