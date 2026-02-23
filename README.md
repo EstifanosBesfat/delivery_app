@@ -63,3 +63,44 @@ static String get baseUrl {
     return 'http://YOUR_LOCAL_IP:3000/api'; // For Physical Devices
   }
 }
+
+```
+
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+- Flutter SDK installed.
+- The Backend Server must be running locally (Docker or Node).
+
+### 2. Clone & Install
+
+```bash
+git clone https://github.com/YOUR_USERNAME/delivery_app.git
+cd delivery_app
+flutter pub get
+```
+
+### 3. Run the App
+
+For Web (Edge/Chrome):
+
+```bash
+flutter run -d chrome
+```
+
+For Android Emulator:
+- Ensure your backend allows traffic from `10.0.2.2` (or `0.0.0.0`).
+
+```bash
+flutter run
+```
+
+## 🧪 How to Test the Real-Time Features
+
+1. Start the Backend (`docker-compose up`).
+2. Start this Flutter App.
+3. Open the backend's Driver Simulator (HTML file).
+4. Click "Move Driver" in the simulator.
+5. Watch the Red Car Icon move on the Flutter map instantly!
