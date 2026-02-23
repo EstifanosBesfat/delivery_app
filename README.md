@@ -1,75 +1,65 @@
-# Delivery App (Flutter + Map + Realtime Driver Tracking)
+# 📱 Real-Time Delivery App (Flutter Frontend)
 
-This project is a Flutter delivery app prototype with:
-- Restaurant markers on OpenStreetMap (`flutter_map`)
-- Tap restaurant marker to open menu/order sheet
-- Realtime driver location updates via `socket.io`
-- Backend API integration for restaurants and order creation
+The mobile client for the **Geospatial Delivery System**. Built with **Flutter**, this app visualizes real-time socket events, renders interactive maps using OpenStreetMap, and manages the ordering lifecycle via a custom Node.js backend.
 
-## Tech Stack
-- Flutter
-- Dart SDK `^3.11.0`
-- `flutter_map`
-- `latlong2`
-- `http`
-- `socket_io_client`
+🔗 **Backend Repository:** [https://github.com/EstifanosBesfat/delivery_app] (Node.js, PostGIS, Redis, Docker)
 
-## Prerequisites
-- Flutter SDK installed and working (`flutter doctor`)
-- Microsoft Edge (for web target)
-- Backend server running on `http://localhost:3000`
+---
 
-## Install
-```powershell
-flutter pub get
-```
+## 🛠️ Tech Stack
 
-## Run in Edge (Web)
-```powershell
-flutter config --enable-web
-flutter devices
-flutter run -d edge
-```
+*   **Framework:** Flutter (Dart)
+*   **Maps:** `flutter_map` (OpenStreetMap implementation) & `latlong2`
+*   **Real-Time:** `socket_io_client` (WebSockets)
+*   **Networking:** `http`
+*   **Platform:** Android, iOS, Web
 
-## Backend Requirements
-The app currently calls:
-- REST base URL: `http://localhost:3000/api`
-- Socket server: `http://localhost:3000`
+---
 
-Expected endpoints/events:
-- `GET /api/restaurants?lat=<value>&long=<value>&radius=5000`
-- `POST /api/orders` with JSON body:
-  - `restaurantId` (int)
-  - `total` (double)
-- Socket event:
-  - listen: `trackDriver`
-  - payload should include `lat` and `long`
+## ⚡ Key Features
 
-## Important Network Notes
-`localhost` only works when backend is on the same machine as the app runtime.
+### 1. 🗺️ Live Map Visualization
+Instead of using paid map APIs, this app implements **OpenStreetMap (OSM)** via `flutter_map`.
+*   Renders user location (Blue).
+*   Renders restaurant locations fetched via **Geospatial Queries** (Orange).
+*   Renders moving drivers in **Real-Time** (Red).
 
-If you run on:
-- Android emulator: use `10.0.2.2` instead of `localhost`
-- iOS simulator: `localhost` is usually fine
-- Real device: use your computer LAN IP (for example `192.168.1.5`)
+### 2. 📡 Real-Time Driver Tracking
+The app connects to the backend via **WebSockets** (`socket.io`).
+*   Listens for `trackDriver` events emitted by the Node.js server.
+*   Updates the driver's marker position on the map instantly without page refreshes or polling.
 
-Update `baseUrl` in `lib/services/api_service.dart` and socket URL in `lib/main.dart` if needed.
+### 3. 🍔 Transactional Ordering
+*   **Dynamic Menus:** Clicking a map marker opens a bottom sheet with restaurant details.
+*   **Atomic Orders:** When "Order Now" is clicked, the app sends a request to the backend.
+*   **Error Handling:** Displays specific feedback if the backend rejects the order (e.g., "No drivers available" due to race conditions).
 
-## Project Structure
-- `lib/main.dart`: map UI, marker rendering, socket listener, order flow
-- `lib/services/api_service.dart`: REST calls for restaurants and orders
-- `pubspec.yaml`: dependencies and SDK constraint
+---
 
-## Troubleshooting
-- `pubspec.yaml has no lower-bound SDK constraint`:
-  - Ensure `pubspec.yaml` contains:
-    - `environment:`
-    - `  sdk: ^3.11.0`
-- `No supported devices found with name or id matching 'edge'`:
-  - Install Edge, run `flutter config --enable-web`, then `flutter devices`
-- Map loads but no restaurants:
-  - Check backend is running on port `3000`
-  - Verify `/api/restaurants` returns data
-- Socket not updating driver:
-  - Ensure server emits `trackDriver` with numeric `lat`/`long`
+## 🔌 Backend Integration
 
+This app is not a mock. It requires the custom **Delivery API** to function. It communicates with the backend in two ways:
+
+1.  **REST API (HTTP):**
+    *   `GET /api/restaurants`: Sends the user's GPS coordinates to the backend. The backend uses **PostGIS** to calculate distances and returns nearby venues.
+    *   `POST /api/orders`: Initiates a database transaction to lock a driver and create an order record.
+
+2.  **WebSockets (Socket.io):**
+    *   Maintains a persistent connection to receive live location updates from the driver simulator.
+
+### ⚙️ Networking Configuration
+The app is configured to handle different environments (Emulator vs Web vs Physical Device):
+
+```dart
+// lib/services/api_service.dart
+
+// Logic to determine the correct Backend IP
+static String get baseUrl {
+  if (kIsWeb) {
+    return 'http://localhost:3000/api'; // For Web Browser
+  } else if (Platform.isAndroid) {
+    return 'http://10.0.2.2:3000/api';  // Android Emulator Magic IP
+  } else {
+    return 'http://YOUR_LOCAL_IP:3000/api'; // For Physical Devices
+  }
+}
