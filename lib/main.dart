@@ -1,70 +1,130 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+
 import 'services/api_service.dart';
 
 void main() {
-  runApp(const MaterialApp(home: HomeScreen()));
+  runApp(const MaterialApp(home: MapScreen()));
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class MapScreen extends StatefulWidget {
+  const MapScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<MapScreen> createState() => _MapScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _MapScreenState extends State<MapScreen> {
   List<dynamic> restaurants = [];
-  String status = "Press button to fetch";
+  LatLng? driverLocation;
+  late IO.Socket socket;
 
-  // Simulate Meskel Square Coordinates
-  final double myLat = 9.0100;
-  final double myLong = 38.7636;
+  final LatLng myLocation = LatLng(9.0100, 38.7636);
 
-  void fetchFood() async {
-    setState(() => status = "Loading...");
-    
-    // Call our Node.js Backend
-    final data = await ApiService.getNearbyRestaurants(myLat, myLong);
-    
+  @override
+  void initState() {
+    super.initState();
+    fetchRestaurants();
+    connectSocket();
+  }
+
+  void fetchRestaurants() async {
+    final data = await ApiService.getNearbyRestaurants(
+      myLocation.latitude,
+      myLocation.longitude,
+    );
+
+    if (!mounted) return;
     setState(() {
       restaurants = data;
-      status = "Found ${data.length} restaurants";
     });
+  }
+
+  void connectSocket() {
+    socket = IO.io('http://localhost:3000', <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': false,
+    });
+
+    socket.connect();
+
+    socket.onConnect((_) {
+      print('Connected to Socket Server');
+    });
+
+    socket.on('trackDriver', (data) {
+      final lat = (data['lat'] as num?)?.toDouble();
+      final lng = (data['long'] as num?)?.toDouble();
+      if (lat == null || lng == null || !mounted) return;
+
+      print('Driver moved: $lat, $lng');
+      setState(() {
+        driverLocation = LatLng(lat, lng);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    socket.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Delivery App 🍕")),
-      body: Column(
+      appBar: AppBar(title: const Text('Addis Food Delivery')),
+      body: FlutterMap(
+        options: MapOptions(
+          initialCenter: myLocation,
+          initialZoom: 13.0,
+        ),
         children: [
-          const SizedBox(height: 20),
-          Text(status, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: fetchFood, 
-            child: const Text("Find Food Near Me")
+          TileLayer(
+            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            subdomains: const ['a', 'b', 'c'],
           ),
-          const SizedBox(height: 20),
-          
-          // List of Restaurants
-          Expanded(
-            child: ListView.builder(
-              itemCount: restaurants.length,
-              itemBuilder: (context, index) {
-                final r = restaurants[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  child: ListTile(
-                    leading: const Icon(Icons.restaurant, color: Colors.orange),
-                    title: Text(r['name']),
-                    subtitle: Text("${r['distance'].toStringAsFixed(0)} meters away"),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: myLocation,
+                child: const Icon(
+                  Icons.person_pin_circle,
+                  color: Colors.blue,
+                  size: 40,
+                ),
+              ),
+              ...restaurants.map((r) {
+                return Marker(
+                  point: LatLng(
+                    (r['latitude'] as num).toDouble(),
+                    (r['longitude'] as num).toDouble(),
+                  ),
+                  child: const Icon(
+                    Icons.restaurant,
+                    color: Colors.orange,
+                    size: 30,
                   ),
                 );
-              },
-            ),
+              }).toList(),
+              if (driverLocation != null)
+                Marker(
+                  point: driverLocation!,
+                  child: const Icon(
+                    Icons.directions_car,
+                    color: Colors.red,
+                    size: 40,
+                  ),
+                ),
+            ],
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: fetchRestaurants,
+        child: const Icon(Icons.refresh),
       ),
     );
   }
